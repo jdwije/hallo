@@ -741,6 +741,147 @@
 
 (function() {
   (function(jQuery) {
+    return jQuery.widget("IKS.halloezimage", {
+      dialog: null,
+      dialogId: null,
+      options: {
+        uuid: '',
+        editable: null,
+        uploadURL: '',
+        fetchURL: '',
+        label: 'Insert Image'
+      },
+      _create: function() {
+        var widget;
+        widget = this;
+        if (this.dialog === null) {
+          this.dialogId = this.options.uuid + "-image-dialog";
+          this.dialog = jQuery("<div class='ezimage-widget' id='" + this.dialogId + "'>            <ul class='eztabs'>              <li><a href='#" + this.options.uuid + "-tab-upload'>Upload</a></li>              <li><a href='#" + this.options.uuid + "-tab-select'>Select</a></li>            </ul>            <div id='" + this.options.uuid + "-tab-upload'>              <form>                <input type='file' id='" + this.options.uuid + "-ezfile' name='files[]' accept='image/*' multiple/>              </form>            </div>            <div id='" + this.options.uuid + "-tab-select'>            </div>          </div>          ");
+          jQuery('body').append(this.dialog);
+          jQuery('#' + widget.dialogId).tabs({
+            'activate': function(event, ui) {
+              var targetPanel, targetTab;
+              targetTab = ui.newTab.find('a');
+              targetPanel = ui.newPanel;
+              if (targetTab.text() === "Select") {
+                return widget.fetchImages(targetPanel);
+              }
+            }
+          });
+          this.setupUploader(this.dialog);
+          return this.dialog.hide();
+        }
+      },
+      setupUploader: function(elem) {
+        var opts, target, widget;
+        opts = this.options;
+        target = this.options.uuid + '-ezfile';
+        widget = this;
+        return elem.find('#' + target).fileupload({
+          url: opts.uploadURL,
+          dataType: 'json',
+          done: function(e, data) {
+            console.log(data.result.files);
+            jQuery.each(data.result.files, function(index, file) {
+              return console.log(file.url);
+            });
+            return widget.toggleWidget();
+          },
+          fail: function(e, data) {
+            console.log("debug info: ", data.textStatus, data.jqXHR);
+            return widget.toggleWidget();
+          },
+          progressall: function(e, data) {
+            var progress;
+            progress = parseInt(data.loaded / data.total * 100, 10);
+            return console.log(progress);
+          }
+        });
+      },
+      fetchImages: function(target) {
+        var widget;
+        widget = this;
+        return jQuery.ajax(this.options.fetchURL, {
+          'type': 'json',
+          complete: function(e, jqXHR, textStatus) {
+            var data;
+            data = jQuery.parseJSON(e.responseText);
+            return widget.setSelectableImages(data, target);
+          }
+        });
+      },
+      setSelectableImages: function(data, target) {
+        var widget;
+        widget = this;
+        target.html('');
+        if (data.length > 0) {
+          return jQuery.each(data, function(index, img_url) {
+            var img;
+            img = jQuery("<img src='" + img_url + "' class='thumbnail' />");
+            target.append(img);
+            return img.on('click', function(event) {
+              var caret;
+              caret = widget.options.editable.getSelection();
+              console.log(caret);
+              return caret.insertNode(img);
+            });
+          });
+        } else {
+          return target.append("<small>no images available yet</small>");
+        }
+      },
+      populateToolbar: function(toolbar) {
+        this.buttonElement = jQuery('<span></span>');
+        this.buttonElement.hallobutton({
+          uuid: this.options.uuid,
+          editable: this.options.editable,
+          label: this.options.label,
+          icon: 'icon-picture',
+          command: null
+        });
+        this.setMenuClickEvent(this.buttonElement);
+        return toolbar.append(this.buttonElement);
+      },
+      setMenuClickEvent: function(btn) {
+        var widget;
+        widget = this;
+        return btn.on('click', function(event) {
+          widget.positionWidet();
+          return widget.toggleWidget();
+        });
+      },
+      positionWidet: function() {
+        var btn_height, btn_left, btn_pos, btn_top;
+        btn_pos = this.buttonElement.offset();
+        btn_height = this.buttonElement.height();
+        btn_top = btn_pos.top;
+        btn_left = btn_pos.left;
+        return this.dialog.css({
+          'position': 'absolute',
+          'top': btn_top + btn_height + 20,
+          'left': btn_left
+        });
+      },
+      toggleWidget: function() {
+        if (this.options.editable._keepActivated === false) {
+          this.dialog.show();
+          return this.options.editable.keepActivated(true);
+        } else {
+          this.dialog.hide();
+          return this.options.editable.keepActivated(false);
+        }
+      },
+      cleanupContentClone: function(element) {
+        this.options.editable.keepActivated(false);
+        return this.dialog.hide();
+      }
+    });
+  })(jQuery);
+
+}).call(this);
+
+(function() {
+  (function(jQuery) {
     return jQuery.widget("IKS.halloformat", {
       options: {
         editable: null,

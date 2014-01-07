@@ -6,6 +6,10 @@
     <link rel="stylesheet" href="hallo.css" />
     <link rel="stylesheet" href="image.css" />
     <link rel="stylesheet" href="fontawesome/css/font-awesome.css" charset="utf-8" />
+
+    <link rel="stylesheet" href="jQuery-File-Upload-9.5.2/css/jquery.fileupload.css">
+
+
 <!--[if lt IE 9]>
     <link rel="stylesheet" href="fontawesome/css/font-awesome-ie7.css" charset="utf-8" />
 <![endif]-->
@@ -13,7 +17,29 @@
     <script src="../lib/jquery-ui/jquery-ui.js"></script>
     <script src="../lib/rangy/rangy-core.js"></script>
     <script src="../dist/hallo.js"></script>
+
+    <script src="jQuery-File-Upload-9.5.2/js/jquery.iframe-transport.js"></script>
+    <!-- The basic File Upload plugin -->
+    <script src="jQuery-File-Upload-9.5.2/js/jquery.fileupload.js"></script>
+
     <title>Hallo example</title>
+
+    <style type="text/css">
+        .ezimage-widget {
+            background: #fff;
+            margin: 2px;
+            border-radius: 5px;
+            border: #333 1px solid;
+        }
+
+        .ezimage-widget .thumbnail {
+          width : auto;
+          height: 70px;
+          margin-right: 2px;
+          margin-top: 2px;
+        }
+
+    </style>
   </head>
   <body>
 
@@ -197,15 +223,9 @@
             'hallolists': {},
             'hallolink': {},
             'halloreundo': {},
-            'halloimage': {
-                search: function(query, limit, offset, successCallback) {
-                    response = {offset: offset, total: limit + 1, assets: searchresult.slice(offset, offset+limit)};
-                    successCallback(response);
-                },
-                suggestions: null,
-                uploadUrl: function() {
-                  return '/some/example/url'
-                }
+            'halloezimage': {
+              'uploadURL' : 'jQuery-File-Upload-9.5.2/server/php/',
+              'fetchURL' : 'jQuery-File-Upload-9.5.2/server/php/get_img.php'
             }
           },
           editable: true,
