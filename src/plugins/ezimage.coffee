@@ -164,6 +164,7 @@
     # fn handles inserting images into content
     # @furl (STR): The image (file) URL as a string
     insertImageContent: ( furl ) ->
+      
 
 
     # fn creates the widgets tollbar entry
