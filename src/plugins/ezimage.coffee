@@ -21,7 +21,8 @@
     # some commonly used vars
     dialog: null
     dialogId: null
-
+    # cached elements
+    pbar: null
     # widget options
     options:
       uuid: ''
@@ -33,6 +34,9 @@
       fetchURL: ''
       # the title for this widget's menu button. set default.
       label: 'Insert Image'
+      imageClass: 'halloimage'
+      # an optional context pareter to be passed to the server side uplaod script
+      context: null
 
     # constructor fn.
     _create: () ->
@@ -52,6 +56,7 @@
             <div id='#{@options.uuid}-tab-upload'>
               <form>
                 <input type='file' id='#{@options.uuid}-ezfile' name='files[]' accept='image/*' multiple/>
+                <div class='progress-bar'></div>
               </form>
             </div>
             <div id='#{@options.uuid}-tab-select'>
@@ -74,8 +79,14 @@
         # set file select event
         @setupUploader @dialog
 
+        # set & hide progress bar
+        @pbar = @dialog.find('.progress-bar')
+        @pbar.progressbar()
+        @pbar.hide()
+
         # dialog is hidden on init
         @dialog.hide()
+        # hide progress bar
 
     # fn sets up the BLUEIMP jQuery File Uploader and integrates it with this widget
     # @elem (jQuery): The widget container element as a jQuery object.
@@ -90,7 +101,7 @@
           # the upload URL and its expected datatype set to JSON
           url : opts.uploadURL
           dataType : 'json'
-
+          formData: { 'context' : widget.options.context }
           # fn called when upload succesfully completes
           done: ( e, data ) ->
             # iterate file uploads and append them to document
@@ -101,26 +112,30 @@
 
             # close the widget
             widget.toggleWidget()
+
+            # hide & reset progress bar
+            widget.pbar.progressbar( "value", 0 )
+            widget.pbar.hide()
           
+          # called on start of fileupload to make things look pretty
+          start: ( e, data ) ->
+            widget.pbar.show()
+
           # fn called on upload error. will output some debug info
           fail: ( e, data ) ->
             # output debug
-            console.log "debug info: ", data.textStatus, data.jqXHR
-
+            # console.log "debug info: ", data.textStatus, data.jqXHR
             # close the widget
             widget.toggleWidget()
-
-            # throw an error
-            # throw data.errorThrown
+            
+             # hide & reset progress bar
+            widget.pbar.progressbar( "value", 0 )
+            widget.pbar.hide()
 
           # fn called to update progress data
           progressall: ( e, data ) ->
             progress = parseInt(data.loaded / data.total * 100, 10);
-            console.log progress
-            # jQuery('#progress .progress-bar').css(
-            #    'width',
-            #     progress + '%'
-            # )
+            widget.pbar.progressbar( "value", progress )
       })
     
     # fn fetches images from the fetchURL endpoint
@@ -148,23 +163,33 @@
       # filter that we actually have data
       if data.length > 0
         # iterate available images and add to selection box
-        jQuery.each data, ( index, img_url ) ->
+        jQuery.each data, ( index, imgData ) ->
+          img_url = imgData['url'];
+          img_alt = imgData['alt'];
+
           # create img as jQ object and append to selection box
-          img = jQuery "<img src='#{img_url}' class='thumbnail' />"
+          img = jQuery "<img src='#{img_url}' alt='#{img_alt}' class='thumbnail' />"
           target.append img
 
           # create a click event for this image to append to document
-          img.on 'click', (event) ->
-            caret = widget.options.editable.getSelection()
-            console.log caret
-            caret.insertNode img
+          img.on 'click', ( event, ui ) ->
+            # do insert
+            img_src = jQuery(this).attr('src')
+            widget.insertImageContent img_src
       else
         target.append "<small>no images available yet</small>"
 
     # fn handles inserting images into content
     # @furl (STR): The image (file) URL as a string
     insertImageContent: ( furl ) ->
-      
+        # generate a unique DOM ID for this image
+        uid = @options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert'
+        # build its HTML string. add a default class to apply and its uuid for later reference
+        imgHTML = "<img src='#{furl}' id='#{uid}' class='#{@options.imageClass}' />"
+        # use execCmd insertHTML instead of insertImage so that we can set its class etc
+        document.execCommand "insertHTML", null, imgHTML
+        # return generated uuid of image in case we want to operate on it
+        return uid
 
 
     # fn creates the widgets tollbar entry

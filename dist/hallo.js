@@ -744,19 +744,22 @@
     return jQuery.widget("IKS.halloezimage", {
       dialog: null,
       dialogId: null,
+      pbar: null,
       options: {
         uuid: '',
         editable: null,
         uploadURL: '',
         fetchURL: '',
-        label: 'Insert Image'
+        label: 'Insert Image',
+        imageClass: 'halloimage',
+        context: null
       },
       _create: function() {
         var widget;
         widget = this;
         if (this.dialog === null) {
           this.dialogId = this.options.uuid + "-image-dialog";
-          this.dialog = jQuery("<div class='ezimage-widget' id='" + this.dialogId + "'>            <ul class='eztabs'>              <li><a href='#" + this.options.uuid + "-tab-upload'>Upload</a></li>              <li><a href='#" + this.options.uuid + "-tab-select'>Select</a></li>            </ul>            <div id='" + this.options.uuid + "-tab-upload'>              <form>                <input type='file' id='" + this.options.uuid + "-ezfile' name='files[]' accept='image/*' multiple/>              </form>            </div>            <div id='" + this.options.uuid + "-tab-select'>            </div>          </div>          ");
+          this.dialog = jQuery("<div class='ezimage-widget' id='" + this.dialogId + "'>            <ul class='eztabs'>              <li><a href='#" + this.options.uuid + "-tab-upload'>Insert</a></li>              <li><a href='#" + this.options.uuid + "-tab-select'>Select</a></li>            </ul>            <div id='" + this.options.uuid + "-tab-upload'>              <form>                <input type='file' id='" + this.options.uuid + "-ezfile' name='files[]' accept='image/*' multiple/>                <div class='progress-bar'></div>              </form>            </div>            <div id='" + this.options.uuid + "-tab-select'>            </div>          </div>          ");
           jQuery('body').append(this.dialog);
           jQuery('#' + widget.dialogId).tabs({
             'activate': function(event, ui) {
@@ -769,6 +772,9 @@
             }
           });
           this.setupUploader(this.dialog);
+          this.pbar = this.dialog.find('.progress-bar');
+          this.pbar.progressbar();
+          this.pbar.hide();
           return this.dialog.hide();
         }
       },
@@ -780,21 +786,31 @@
         return elem.find('#' + target).fileupload({
           url: opts.uploadURL,
           dataType: 'json',
+          formData: {
+            'context': widget.options.context
+          },
           done: function(e, data) {
-            console.log(data.result.files);
             jQuery.each(data.result.files, function(index, file) {
-              return console.log(file.url);
+              var furl;
+              furl = file.url;
+              return widget.insertImageContent(furl);
             });
-            return widget.toggleWidget();
+            widget.toggleWidget();
+            widget.pbar.progressbar("value", 0);
+            return widget.pbar.hide();
+          },
+          start: function(e, data) {
+            return widget.pbar.show();
           },
           fail: function(e, data) {
-            console.log("debug info: ", data.textStatus, data.jqXHR);
-            return widget.toggleWidget();
+            widget.toggleWidget();
+            widget.pbar.progressbar("value", 0);
+            return widget.pbar.hide();
           },
           progressall: function(e, data) {
             var progress;
             progress = parseInt(data.loaded / data.total * 100, 10);
-            return console.log(progress);
+            return widget.pbar.progressbar("value", progress);
           }
         });
       },
@@ -815,20 +831,28 @@
         widget = this;
         target.html('');
         if (data.length > 0) {
-          return jQuery.each(data, function(index, img_url) {
-            var img;
-            img = jQuery("<img src='" + img_url + "' class='thumbnail' />");
+          return jQuery.each(data, function(index, imgData) {
+            var img, img_alt, img_url;
+            img_url = imgData['url'];
+            img_alt = imgData['alt'];
+            img = jQuery("<img src='" + img_url + "' alt='" + img_alt + "' class='thumbnail' />");
             target.append(img);
-            return img.on('click', function(event) {
-              var caret;
-              caret = widget.options.editable.getSelection();
-              console.log(caret);
-              return caret.insertNode(img);
+            return img.on('click', function(event, ui) {
+              var img_src;
+              img_src = jQuery(this).attr('src');
+              return widget.insertImageContent(img_src);
             });
           });
         } else {
           return target.append("<small>no images available yet</small>");
         }
+      },
+      insertImageContent: function(furl) {
+        var imgHTML, uid;
+        uid = this.options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert';
+        imgHTML = "<img src='" + furl + "' id='" + uid + "' class='" + this.options.imageClass + "' />";
+        document.execCommand("insertHTML", null, imgHTML);
+        return uid;
       },
       populateToolbar: function(toolbar) {
         this.buttonElement = jQuery('<span></span>');
@@ -871,7 +895,7 @@
           return this.options.editable.keepActivated(false);
         }
       },
-      cleanupContentClone: function(element) {
+      cleanupContentClone: function() {
         this.options.editable.keepActivated(false);
         return this.dialog.hide();
       }

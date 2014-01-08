@@ -11,6 +11,7 @@
 #     * David Buchmann
 #     * Fabian Vogler
 #     * Bartosz Podlewski
+
 ((jQuery) ->
   jQuery.widget "IKS.halloimage",
     options:
