@@ -81,7 +81,7 @@
 
         # set & hide progress bar
         @pbar = @dialog.find('.progress-bar')
-        @pbar.progressbar()
+        # @pbar.progressbar()
         @pbar.hide()
 
         # dialog is hidden on init
@@ -114,7 +114,8 @@
             widget.toggleWidget()
 
             # hide & reset progress bar
-            widget.pbar.progressbar( "value", 0 )
+            # widget.pbar.progressbar( "value", 0 )
+            widget.pbar.text("0 %");
             widget.pbar.hide()
           
           # called on start of fileupload to make things look pretty
@@ -129,13 +130,13 @@
             widget.toggleWidget()
             
              # hide & reset progress bar
-            widget.pbar.progressbar( "value", 0 )
+            widget.pbar.text("0 %");
             widget.pbar.hide()
 
           # fn called to update progress data
           progressall: ( e, data ) ->
             progress = parseInt(data.loaded / data.total * 100, 10);
-            widget.pbar.progressbar( "value", progress )
+            widget.pbar.text( progress + "%");
       })
     
     # fn fetches images from the fetchURL endpoint
@@ -187,7 +188,8 @@
         # build its HTML string. add a default class to apply and its uuid for later reference
         imgHTML = "<img src='#{furl}' id='#{uid}' class='#{@options.imageClass}' />"
         # use execCmd insertHTML instead of insertImage so that we can set its class etc
-        document.execCommand "insertHTML", null, imgHTML
+        # document.execCommand "insertHTML", null, imgHTML
+        pasteHtmlAtCaret(imgHTML);
         # return generated uuid of image in case we want to operate on it
         return uid
 

@@ -1,3 +1,39 @@
+
+function pasteHtmlAtCaret(html) {
+    var sel, range;
+    if (window.getSelection) {
+        // IE9 and non-IE
+        sel = window.getSelection();
+        if (sel.getRangeAt && sel.rangeCount) {
+            range = sel.getRangeAt(0);
+            range.deleteContents();
+
+            // Range.createContextualFragment() would be useful here but is
+            // only relatively recently standardized and is not supported in
+            // some browsers (IE9, for one)
+            var el = document.createElement("div");
+            el.innerHTML = html;
+            var frag = document.createDocumentFragment(), node, lastNode;
+            while ( (node = el.firstChild) ) {
+                lastNode = frag.appendChild(node);
+            }
+            range.insertNode(frag);
+
+            // Preserve the selection
+            if (lastNode) {
+                range = range.cloneRange();
+                range.setStartAfter(lastNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    } else if (document.selection && document.selection.type != "Control") {
+        // IE < 9
+        document.selection.createRange().pasteHTML(html);
+    }
+}
+
 /* Hallo 1.0.4 - rich text editor for jQuery UI
 * by Henri Bergius and contributors. Available under the MIT license.
 * See http://hallojs.org for more information
@@ -773,7 +809,6 @@
           });
           this.setupUploader(this.dialog);
           this.pbar = this.dialog.find('.progress-bar');
-          this.pbar.progressbar();
           this.pbar.hide();
           return this.dialog.hide();
         }
@@ -796,7 +831,7 @@
               return widget.insertImageContent(furl);
             });
             widget.toggleWidget();
-            widget.pbar.progressbar("value", 0);
+            widget.pbar.text("0 %");
             return widget.pbar.hide();
           },
           start: function(e, data) {
@@ -804,13 +839,13 @@
           },
           fail: function(e, data) {
             widget.toggleWidget();
-            widget.pbar.progressbar("value", 0);
+            widget.pbar.text("0 %");
             return widget.pbar.hide();
           },
           progressall: function(e, data) {
             var progress;
             progress = parseInt(data.loaded / data.total * 100, 10);
-            return widget.pbar.progressbar("value", progress);
+            return widget.pbar.text(progress + "%");
           }
         });
       },
@@ -851,7 +886,7 @@
         var imgHTML, uid;
         uid = this.options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert';
         imgHTML = "<img src='" + furl + "' id='" + uid + "' class='" + this.options.imageClass + "' />";
-        document.execCommand("insertHTML", null, imgHTML);
+        pasteHtmlAtCaret(imgHTML);
         return uid;
       },
       populateToolbar: function(toolbar) {
