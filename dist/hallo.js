@@ -1,39 +1,3 @@
-
-function pasteHtmlAtCaret(html) {
-    var sel, range;
-    if (window.getSelection) {
-        // IE9 and non-IE
-        sel = window.getSelection();
-        if (sel.getRangeAt && sel.rangeCount) {
-            range = sel.getRangeAt(0);
-            range.deleteContents();
-
-            // Range.createContextualFragment() would be useful here but is
-            // only relatively recently standardized and is not supported in
-            // some browsers (IE9, for one)
-            var el = document.createElement("div");
-            el.innerHTML = html;
-            var frag = document.createDocumentFragment(), node, lastNode;
-            while ( (node = el.firstChild) ) {
-                lastNode = frag.appendChild(node);
-            }
-            range.insertNode(frag);
-
-            // Preserve the selection
-            if (lastNode) {
-                range = range.cloneRange();
-                range.setStartAfter(lastNode);
-                range.collapse(true);
-                sel.removeAllRanges();
-                sel.addRange(range);
-            }
-        }
-    } else if (document.selection && document.selection.type != "Control") {
-        // IE < 9
-        document.selection.createRange().pasteHTML(html);
-    }
-}
-
 /* Hallo 1.0.4 - rich text editor for jQuery UI
 * by Henri Bergius and contributors. Available under the MIT license.
 * See http://hallojs.org for more information
@@ -853,7 +817,6 @@ function pasteHtmlAtCaret(html) {
         var widget;
         widget = this;
         return jQuery.ajax(this.options.fetchURL, {
-          'type': 'json',
           complete: function(e, jqXHR, textStatus) {
             var data;
             data = jQuery.parseJSON(e.responseText);
@@ -883,9 +846,11 @@ function pasteHtmlAtCaret(html) {
         }
       },
       insertImageContent: function(furl) {
-        var imgHTML, uid;
+        var imgHTML, uid, widget;
+        widget = this;
         uid = this.options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert';
         imgHTML = "<img src='" + furl + "' id='" + uid + "' class='" + this.options.imageClass + "' />";
+        jQuery(this.element).focus();
         pasteHtmlAtCaret(imgHTML);
         return uid;
       },
@@ -924,10 +889,10 @@ function pasteHtmlAtCaret(html) {
       toggleWidget: function() {
         if (this.options.editable._keepActivated === false) {
           this.dialog.show();
-          return this.options.editable.keepActivated(true);
+          this.options.editable.keepActivated(true);
         } else {
           this.dialog.hide();
-          return this.options.editable.keepActivated(false);
+          this.options.editable.keepActivated(false);
         }
       },
       cleanupContentClone: function() {

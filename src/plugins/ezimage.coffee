@@ -145,8 +145,8 @@
       widget = @
       # do ajax request @ fetchURL
       jQuery.ajax( @options.fetchURL, {
-            'type' : 'json'
             complete: ( e, jqXHR, textStatus ) ->
+              # parse JSON response
               data = jQuery.parseJSON( e.responseText )
               # set available images
               widget.setSelectableImages data, target
@@ -183,13 +183,17 @@
     # fn handles inserting images into content
     # @furl (STR): The image (file) URL as a string
     insertImageContent: ( furl ) ->
+        widget = @
         # generate a unique DOM ID for this image
         uid = @options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert'
         # build its HTML string. add a default class to apply and its uuid for later reference
         imgHTML = "<img src='#{furl}' id='#{uid}' class='#{@options.imageClass}' />"
         # use execCmd insertHTML instead of insertImage so that we can set its class etc
         # document.execCommand "insertHTML", null, imgHTML
+        jQuery(@element).focus();
         pasteHtmlAtCaret(imgHTML);
+        # console.log(widget.element)
+       #  jQuery( widget.element ).insertText( imgHTML, 0 )
         # return generated uuid of image in case we want to operate on it
         return uid
 
@@ -251,9 +255,11 @@
       if @options.editable._keepActivated is false
         @dialog.show()
         @options.editable.keepActivated true
+        return
       else
         @dialog.hide()
         @options.editable.keepActivated false
+        return
 
 
     # clean stuff up when editable is out of focus

@@ -18,13 +18,14 @@ if ( is_dir( $file_dir ) ) {
 		if ( $basename != '.' AND $basename != '..' ) {
 			# only read images
 			if ( $ext == 'jpg' ) {
-				$furl = 'http://localhost:8888/hallo/examples/jQuery-File-Upload-9.5.2/server/php/files/' . $file ;
+				$furl = 'http://localhost/hallo/examples/jQuery-File-Upload-9.5.2/server/php/files/' . $file ;
 				array_push($response, array( 'url' => $furl, 'alt' => 'an image of some paper' ) );
 			}
 		}
 	}
-
+	header("Content-Type: application/json", true);
 	echo json_encode($response);
+	die();
 
 }	
 else {
