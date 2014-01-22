@@ -65,7 +65,7 @@
           "
         # append dialog to the document
         jQuery( 'body' ).append @dialog
-
+        
         # setup dialogs internal tabz. When 'SELECT' is pressed call should be made to populate images
         jQuery( '#' + widget.dialogId ).tabs({
             'activate' : ( event, ui ) ->
