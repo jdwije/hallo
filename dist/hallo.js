@@ -760,7 +760,7 @@
           title: "Insert or Select Image",
           buttonTitle: "Insert",
           buttonUpdateTitle: "Update",
-          modal: true,
+          modal: false,
           resizable: false,
           draggable: false,
           position: {
@@ -782,6 +782,7 @@
               var targetPanel, targetTab;
               targetTab = ui.newTab.find('a');
               targetPanel = ui.newPanel;
+              widget.dialog.selectPanel = targetPanel;
               if (targetTab.text() === "Select") {
                 return widget.fetchImages(targetPanel);
               }
@@ -804,13 +805,18 @@
             'context': widget.options.context
           },
           done: function(e, data) {
-            jQuery.each(data.result.files, function(index, file) {
-              var furl;
-              furl = file.url;
-              return widget.insertImageContent(furl);
-            });
             widget.dialog.dialog('close');
-            console.log("debug info: ", data.textStatus, data.jqXHR);
+            if (document.documentMode !== 8) {
+              jQuery.each(data.result.files, function(index, file) {
+                var furl;
+                furl = file.url;
+                return widget.insertImageContent(furl);
+              });
+            } else {
+              widget.options.editable.keepActivated(true);
+              widget.dialog.dialog('open');
+              widget.dialog.tabs("option", "active", 1);
+            }
             widget.pbar.text("0 %");
             return widget.pbar.hide();
           },
@@ -818,7 +824,6 @@
             return widget.pbar.show();
           },
           fail: function(e, data) {
-            console.log("debug info: ", data.textStatus, data.jqXHR);
             widget.dialog.dialog('close');
             widget.pbar.text("0 %");
             return widget.pbar.hide();
@@ -842,42 +847,49 @@
         });
       },
       setSelectableImages: function(data, target) {
-        var widget;
+        var ieFlag, widget;
         widget = this;
+        ieFlag = false;
         target.html('');
         if (data.length > 0) {
-          return jQuery.each(data, function(index, imgData) {
+          jQuery.each(data, function(index, imgData) {
             var img, img_alt, img_url;
             img_url = imgData['url'];
             img_alt = imgData['alt'];
             img = jQuery("<img src='" + img_url + "' alt='" + img_alt + "' class='thumbnail' />");
             target.append(img);
-            return img.on('click', function(event, ui) {
-              var img_src;
-              img_src = jQuery(this).attr('src');
-              return widget.insertImageContent(img_src);
-            });
+            if (!document.documentMode || document.documentMode !== 8) {
+              return img.on('click', function(event, ui) {
+                var img_src;
+                img_src = jQuery(this).attr('src');
+                return widget.insertImageContent(img_src);
+              });
+            } else {
+              return ieFlag = true;
+            }
           });
+          if (ieFlag === true) {
+            return alert("Detected IE8: Use the Select tab and drag & drop images onto your document to arrange them after uploading them.");
+          }
         } else {
           return target.append("<small>no images available yet</small>");
         }
       },
       insertImageContent: function(furl) {
-        var e, imgHTML, rawText, split, uid, widget;
+        var imgHTML, imgNode, uid, widget;
         widget = this;
         uid = this.options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert';
         imgHTML = "<img src='" + furl + "' id='" + uid + "' class='" + this.options.imageClass + "' />";
-        try {
+        widget.options.editable.restoreSelection(widget.lastSelection);
+        if (widget.lastSelection.collapsed) {
+          imgNode = jQuery(imgHTML)[0];
+          if (!document.documentMode || document.documentMode !== 8) {
+            widget.lastSelection.insertNode(imgNode);
+          } else {
+
+          }
+        } else {
           document.execCommand("insertHTML", null, imgHTML);
-          console.log('good insert');
-        } catch (_error) {
-          e = _error;
-          rawText = widget.options.editable.element.html();
-          split = rawText.split('');
-          console.log(widget.lastSelection);
-          split.splice(widget.lastSelection, 0, imgHTML);
-          console.log('legacy insert');
-          widget.options.editable.element.html(split.join(''));
         }
         return uid;
       },
@@ -897,7 +909,7 @@
         var widget;
         widget = this;
         return btn.on('click', function(event) {
-          widget.lastSelection = widget.getCaretCharacterOffsetWithin(widget.options.editable.element[0]);
+          widget.lastSelection = widget.options.editable.getSelection();
           return widget.toggleWidget();
         });
       },
@@ -920,7 +932,6 @@
           preCaretTextRange.setEndPoint("EndToEnd", textRange);
           caretOffset = preCaretTextRange.text.length;
         }
-        console.log(caretOffset);
         return caretOffset;
       },
       positionWidet: function() {
@@ -938,11 +949,9 @@
       toggleWidget: function() {
         if (this.options.editable._keepActivated === false) {
           this.dialog.dialog('open');
-          console.log("open");
           this.options.editable.keepActivated(true);
         } else {
           this.dialog.dialog('close');
-          console.log("close");
           this.options.editable.keepActivated(false);
         }
       },

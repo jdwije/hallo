@@ -44,7 +44,7 @@
         title: "Insert or Select Image"
         buttonTitle: "Insert"
         buttonUpdateTitle: "Update"
-        modal: true
+        modal: false
         resizable: false
         draggable: false
         position: { of: @buttonElement  }
@@ -86,7 +86,7 @@
             'activate' : ( event, ui ) ->
               targetTab = ui.newTab.find('a')
               targetPanel = ui.newPanel
-
+              widget.dialog.selectPanel = targetPanel
               # filter for SELECT tab. Populate with images if found
               if targetTab.text() is "Select" then widget.fetchImages targetPanel
           })
@@ -98,8 +98,6 @@
         @pbar = @dialog.find('.progress-bar')
         # hide progress indicator
         @pbar.hide()
-
-
 
 
     # fn sets up the BLUEIMP jQuery File Uploader and integrates it with this widget
@@ -118,15 +116,22 @@
           formData: { 'context' : widget.options.context }
           # fn called when upload succesfully completes
           done: ( e, data ) ->
-            # iterate file uploads and append them to document
-            jQuery.each data.result.files, (index, file) ->
-                # get file url and append it to editable element at the cursor
-                furl = file.url
-                widget.insertImageContent furl
 
             # close the dialog
             widget.dialog.dialog('close')
-            console.log "debug info: ", data.textStatus, data.jqXHR
+
+            if document.documentMode != 8
+              # iterate file uploads and append them to document
+              jQuery.each data.result.files, (index, file) ->
+                # get file url and append it to editable element at the cursor
+                furl = file.url
+                widget.insertImageContent furl
+            else
+              widget.options.editable.keepActivated true
+              # do for IE8, switch to select images and repopulate
+              
+              widget.dialog.dialog('open')
+              widget.dialog.tabs( "option", "active", 1 );
 
             # hide & reset progress bar
             # widget.pbar.progressbar( "value", 0 )
@@ -140,7 +145,6 @@
           # fn called on upload error. will output some debug info
           fail: ( e, data ) ->
             # output debug
-            console.log "debug info: ", data.textStatus, data.jqXHR
             # close the dialog
             widget.dialog.dialog('close')
             
@@ -172,7 +176,7 @@
     # @target (jQuery): The target container for the images as a jQuery object. In this case the tab display container.
     setSelectableImages: ( data, target ) ->
       widget = @
-
+      ieFlag = false
       # clear cached html content
       target.html('')
 
@@ -187,11 +191,20 @@
           img = jQuery "<img src='#{img_url}' alt='#{img_alt}' class='thumbnail' />"
           target.append img
 
-          # create a click event for this image to append to document
-          img.on 'click', ( event, ui ) ->
-            # do insert
-            img_src = jQuery(this).attr('src')
-            widget.insertImageContent img_src
+
+           # filter for IE 8. we will create a drag and drop for this.
+          if !document.documentMode || document.documentMode != 8              
+            # create a click event for this image to append to document
+            img.on 'click', ( event, ui ) ->
+              # do insert
+              img_src = jQuery(this).attr('src')
+              widget.insertImageContent img_src
+          else
+            # is IE 8. do a drag and drop instead
+            ieFlag = true
+
+        if ieFlag == true then alert("Detected IE8: Use the Select tab and drag & drop images onto your document to arrange them after uploading them.")
+
       else
         target.append "<small>no images available yet</small>"
 
@@ -204,24 +217,24 @@
         # build its HTML string. add a default class to apply and its uuid for later reference
         imgHTML = "<img src='#{furl}' id='#{uid}' class='#{@options.imageClass}' />"
         # use execCmd insertHTML instead of insertImage so that we can set its class etc
-        # document.execCommand "insertHTML", null, imgHTML       
-        try
+        
+        widget.options.editable.restoreSelection(widget.lastSelection)
+
+        if widget.lastSelection.collapsed
+          imgNode = jQuery(imgHTML)[0]
+          # filter for IE 8. we will create a drag and drop for this.
+          if !document.documentMode || document.documentMode != 8
+            widget.lastSelection.insertNode imgNode
+          else
+            # is IE 8. do specific stuff for it here.            
+
+        else
           document.execCommand "insertHTML", null, imgHTML
-          console.log('good insert')
-        catch e
-           # save html
-          rawText = widget.options.editable.element.html()
-          # turn into an array and modify
-          split = rawText.split('')
-          console.log(widget.lastSelection)
-          split.splice( widget.lastSelection, 0, imgHTML )
-          # paste is back in
-          console.log('legacy insert')
-          widget.options.editable.element.html(split.join(''))         
+          
+
 
         # return generated uuid of image in case we want to operate on it
         return uid
-
 
     # fn creates the widgets tollbar entry
     # @toolbar (jQuery): The Hallo JS menu toolbar as a jQuery object
@@ -255,7 +268,7 @@
       # create click event for the button
       btn.on 'click', (event)->
         # we need to save the current selection because we will lose focus
-        widget.lastSelection = widget.getCaretCharacterOffsetWithin( widget.options.editable.element[0] )
+        widget.lastSelection = widget.options.editable.getSelection()
 
       # show/position the dialog
       # widget.positionWidet()   
@@ -280,7 +293,6 @@
           preCaretTextRange.moveToElementText(element);
           preCaretTextRange.setEndPoint("EndToEnd", textRange);
           caretOffset = preCaretTextRange.text.length;
-      console.log(caretOffset)
       return caretOffset;
 
     # positions the widget next to its menu button
@@ -303,12 +315,10 @@
     toggleWidget: ->
       if @options.editable._keepActivated is false
         @dialog.dialog('open')
-        console.log("open");
         @options.editable.keepActivated true
         return
       else
         @dialog.dialog('close')
-        console.log("close");
         @options.editable.keepActivated false
         return
 
