@@ -37,6 +37,18 @@
       imageClass: 'halloimage'
       # an optional context pareter to be passed to the server side uplaod script
       context: null
+      dialogOpts:
+        autoOpen: false
+        width: 540
+        height: 200
+        title: "Insert or Select Image"
+        buttonTitle: "Insert"
+        buttonUpdateTitle: "Update"
+        modal: true
+        resizable: false
+        draggable: false
+        position: { of: @buttonElement  }
+        dialogClass: 'hallolink-dialog'
 
     # constructor fn.
     _create: () ->
@@ -66,6 +78,9 @@
         # append dialog to the document
         jQuery( 'body' ).append @dialog
         
+        # create dialog
+        @dialog.dialog(@options.dialogOpts)
+
         # setup dialogs internal tabz. When 'SELECT' is pressed call should be made to populate images
         jQuery( '#' + widget.dialogId ).tabs({
             'activate' : ( event, ui ) ->
@@ -81,12 +96,11 @@
 
         # set & hide progress bar
         @pbar = @dialog.find('.progress-bar')
-        # @pbar.progressbar()
+        # hide progress indicator
         @pbar.hide()
 
-        # dialog is hidden on init
-        @dialog.hide()
-        # hide progress bar
+
+
 
     # fn sets up the BLUEIMP jQuery File Uploader and integrates it with this widget
     # @elem (jQuery): The widget container element as a jQuery object.
@@ -110,8 +124,9 @@
                 furl = file.url
                 widget.insertImageContent furl
 
-            # close the widget
-            widget.toggleWidget()
+            # close the dialog
+            widget.dialog.dialog('close')
+            console.log "debug info: ", data.textStatus, data.jqXHR
 
             # hide & reset progress bar
             # widget.pbar.progressbar( "value", 0 )
@@ -125,9 +140,9 @@
           # fn called on upload error. will output some debug info
           fail: ( e, data ) ->
             # output debug
-            # console.log "debug info: ", data.textStatus, data.jqXHR
-            # close the widget
-            widget.toggleWidget()
+            console.log "debug info: ", data.textStatus, data.jqXHR
+            # close the dialog
+            widget.dialog.dialog('close')
             
              # hide & reset progress bar
             widget.pbar.text("0 %");
@@ -189,11 +204,21 @@
         # build its HTML string. add a default class to apply and its uuid for later reference
         imgHTML = "<img src='#{furl}' id='#{uid}' class='#{@options.imageClass}' />"
         # use execCmd insertHTML instead of insertImage so that we can set its class etc
-        # document.execCommand "insertHTML", null, imgHTML
-        jQuery(@element).focus();
-        pasteHtmlAtCaret(imgHTML);
-        # console.log(widget.element)
-       #  jQuery( widget.element ).insertText( imgHTML, 0 )
+        # document.execCommand "insertHTML", null, imgHTML       
+        try
+          document.execCommand "insertHTML", null, imgHTML
+          console.log('good insert')
+        catch e
+           # save html
+          rawText = widget.options.editable.element.html()
+          # turn into an array and modify
+          split = rawText.split('')
+          console.log(widget.lastSelection)
+          split.splice( widget.lastSelection, 0, imgHTML )
+          # paste is back in
+          console.log('legacy insert')
+          widget.options.editable.element.html(split.join(''))         
+
         # return generated uuid of image in case we want to operate on it
         return uid
 
@@ -229,10 +254,34 @@
 
       # create click event for the button
       btn.on 'click', (event)->
-        # show the dialog
-        widget.positionWidet()   
+        # we need to save the current selection because we will lose focus
+        widget.lastSelection = widget.getCaretCharacterOffsetWithin( widget.options.editable.element[0] )
+
+      # show/position the dialog
+      # widget.positionWidet()   
         widget.toggleWidget()
 
+    # gets the character ofset with the target element
+    # @element (HTML ELEMENT): A raw DOM element
+    getCaretCharacterOffsetWithin: (element) ->
+      caretOffset = 0;
+      doc = element.ownerDocument || element.document;
+      win = doc.defaultView || doc.parentWindow;
+      sel;
+      if typeof win.getSelection != "undefined"
+          range = win.getSelection().getRangeAt(0);
+          preCaretRange = range.cloneRange();
+          preCaretRange.selectNodeContents(element);
+          preCaretRange.setEnd(range.endContainer, range.endOffset);
+          caretOffset = preCaretRange.toString().length;
+      else if (sel = doc.selection) && sel.type != "Control"
+          textRange = sel.createRange();
+          preCaretTextRange = doc.body.createTextRange();
+          preCaretTextRange.moveToElementText(element);
+          preCaretTextRange.setEndPoint("EndToEnd", textRange);
+          caretOffset = preCaretTextRange.text.length;
+      console.log(caretOffset)
+      return caretOffset;
 
     # positions the widget next to its menu button
     positionWidet: ->
@@ -253,11 +302,13 @@
     # toggle the widgets visability on/off. also toggles the autoclose feature of jquery ui widgets
     toggleWidget: ->
       if @options.editable._keepActivated is false
-        @dialog.show()
+        @dialog.dialog('open')
+        console.log("open");
         @options.editable.keepActivated true
         return
       else
-        @dialog.hide()
+        @dialog.dialog('close')
+        console.log("close");
         @options.editable.keepActivated false
         return
 
@@ -266,6 +317,5 @@
     cleanupContentClone: () ->
       # hide it and set keed activated to fasle
       @options.editable.keepActivated false
-      @dialog.hide()
 
 )(jQuery)

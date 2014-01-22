@@ -752,7 +752,22 @@
         fetchURL: '',
         label: 'Insert Image',
         imageClass: 'halloimage',
-        context: null
+        context: null,
+        dialogOpts: {
+          autoOpen: false,
+          width: 540,
+          height: 200,
+          title: "Insert or Select Image",
+          buttonTitle: "Insert",
+          buttonUpdateTitle: "Update",
+          modal: true,
+          resizable: false,
+          draggable: false,
+          position: {
+            of: this.buttonElement
+          },
+          dialogClass: 'hallolink-dialog'
+        }
       },
       _create: function() {
         var widget;
@@ -761,6 +776,7 @@
           this.dialogId = this.options.uuid + "-image-dialog";
           this.dialog = jQuery("<div class='ezimage-widget' id='" + this.dialogId + "'>            <ul class='eztabs'>              <li><a href='#" + this.options.uuid + "-tab-upload'>Insert</a></li>              <li><a href='#" + this.options.uuid + "-tab-select'>Select</a></li>            </ul>            <div id='" + this.options.uuid + "-tab-upload'>              <form>                <input type='file' id='" + this.options.uuid + "-ezfile' name='files[]' accept='image/*' multiple/>                <div class='progress-bar'></div>              </form>            </div>            <div id='" + this.options.uuid + "-tab-select'>            </div>          </div>          ");
           jQuery('body').append(this.dialog);
+          this.dialog.dialog(this.options.dialogOpts);
           jQuery('#' + widget.dialogId).tabs({
             'activate': function(event, ui) {
               var targetPanel, targetTab;
@@ -773,8 +789,7 @@
           });
           this.setupUploader(this.dialog);
           this.pbar = this.dialog.find('.progress-bar');
-          this.pbar.hide();
-          return this.dialog.hide();
+          return this.pbar.hide();
         }
       },
       setupUploader: function(elem) {
@@ -794,7 +809,8 @@
               furl = file.url;
               return widget.insertImageContent(furl);
             });
-            widget.toggleWidget();
+            widget.dialog.dialog('close');
+            console.log("debug info: ", data.textStatus, data.jqXHR);
             widget.pbar.text("0 %");
             return widget.pbar.hide();
           },
@@ -802,7 +818,8 @@
             return widget.pbar.show();
           },
           fail: function(e, data) {
-            widget.toggleWidget();
+            console.log("debug info: ", data.textStatus, data.jqXHR);
+            widget.dialog.dialog('close');
             widget.pbar.text("0 %");
             return widget.pbar.hide();
           },
@@ -846,12 +863,22 @@
         }
       },
       insertImageContent: function(furl) {
-        var imgHTML, uid, widget;
+        var e, imgHTML, rawText, split, uid, widget;
         widget = this;
         uid = this.options.uuid + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + (Math.random() * 100).toString().replace('.', '') + '-' + 'image-insert';
         imgHTML = "<img src='" + furl + "' id='" + uid + "' class='" + this.options.imageClass + "' />";
-        jQuery(this.element).focus();
-        pasteHtmlAtCaret(imgHTML);
+        try {
+          document.execCommand("insertHTML", null, imgHTML);
+          console.log('good insert');
+        } catch (_error) {
+          e = _error;
+          rawText = widget.options.editable.element.html();
+          split = rawText.split('');
+          console.log(widget.lastSelection);
+          split.splice(widget.lastSelection, 0, imgHTML);
+          console.log('legacy insert');
+          widget.options.editable.element.html(split.join(''));
+        }
         return uid;
       },
       populateToolbar: function(toolbar) {
@@ -870,9 +897,31 @@
         var widget;
         widget = this;
         return btn.on('click', function(event) {
-          widget.positionWidet();
+          widget.lastSelection = widget.getCaretCharacterOffsetWithin(widget.options.editable.element[0]);
           return widget.toggleWidget();
         });
+      },
+      getCaretCharacterOffsetWithin: function(element) {
+        var caretOffset, doc, preCaretRange, preCaretTextRange, range, sel, textRange, win;
+        caretOffset = 0;
+        doc = element.ownerDocument || element.document;
+        win = doc.defaultView || doc.parentWindow;
+        sel;
+        if (typeof win.getSelection !== "undefined") {
+          range = win.getSelection().getRangeAt(0);
+          preCaretRange = range.cloneRange();
+          preCaretRange.selectNodeContents(element);
+          preCaretRange.setEnd(range.endContainer, range.endOffset);
+          caretOffset = preCaretRange.toString().length;
+        } else if ((sel = doc.selection) && sel.type !== "Control") {
+          textRange = sel.createRange();
+          preCaretTextRange = doc.body.createTextRange();
+          preCaretTextRange.moveToElementText(element);
+          preCaretTextRange.setEndPoint("EndToEnd", textRange);
+          caretOffset = preCaretTextRange.text.length;
+        }
+        console.log(caretOffset);
+        return caretOffset;
       },
       positionWidet: function() {
         var btn_height, btn_left, btn_pos, btn_top;
@@ -888,16 +937,17 @@
       },
       toggleWidget: function() {
         if (this.options.editable._keepActivated === false) {
-          this.dialog.show();
+          this.dialog.dialog('open');
+          console.log("open");
           this.options.editable.keepActivated(true);
         } else {
-          this.dialog.hide();
+          this.dialog.dialog('close');
+          console.log("close");
           this.options.editable.keepActivated(false);
         }
       },
       cleanupContentClone: function() {
-        this.options.editable.keepActivated(false);
-        return this.dialog.hide();
+        return this.options.editable.keepActivated(false);
       }
     });
   })(jQuery);

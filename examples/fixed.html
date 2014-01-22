@@ -18,42 +18,7 @@
     <script src="../lib/jquery-ui/jquery-ui.js"></script>
     <script src="../lib/rangy/rangy-core.js"></script>
     <script src="../dist/hallo.js"></script>
-    <script type="text/javascript">
-    // define cross browser paste script
-      window.pasteHtmlAtCaret = function (html, elem) {
-          var sel, range;
-          if (window.getSelection) {
-              // IE9 and non-IE
-              sel = window.getSelection();
-              if (sel.getRangeAt && sel.rangeCount) {
-                  range = sel.getRangeAt(0);
-                  range.deleteContents();
-       
-                  // Range.createContextualFragment() would be useful here but is
-                  // non-standard and not supported in all browsers (IE9, for one)
-                  var el = document.createElement("div");
-                  el.innerHTML = html;
-                  var frag = document.createDocumentFragment(), node, lastNode;
-                  while ( (node = el.firstChild) ) {
-                      lastNode = frag.appendChild(node);
-                  }
-                  range.insertNode(frag);
-                  
-                  // Preserve the selection
-                  if (lastNode) {
-                      range = range.cloneRange();
-                      range.setStartAfter(lastNode);
-                      range.collapse(true);
-                      sel.removeAllRanges();
-                      sel.addRange(range);
-                  }
-              }
-          } else if (document.selection && document.selection.type != "Control") {
-              // IE < 9
-              document.selection.createRange().pasteHTML(html);
-          }
-      }
-    </script>
+   
     <script src="jQuery-File-Upload-9.5.2/js/jquery.iframe-transport.js"></script>
     <!-- The basic File Upload plugin -->
     <script src="jQuery-File-Upload-9.5.2/js/jquery.fileupload.js"></script>
@@ -94,7 +59,7 @@
     <p id="modified">Editables have not been modified</p>
 
     <h1 class="editable">Hello World</h1>
-    <div class="editable">
+    <div class="editable" contenteditable="true">
       <p>
         Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat.
       </p>
